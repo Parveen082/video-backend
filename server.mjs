@@ -10,60 +10,71 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*", // later apna Netlify URL dal dena
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
 
-// 👇 users store karne ke liye
 const users = {};
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
+  console.log("🔌 User connected:", socket.id);
 
-  // user join
+  // join user
   socket.on("join", (userId) => {
     users[userId] = socket.id;
-    console.log("User joined:", userId);
+    console.log(`✅ User joined: ${userId} -> ${socket.id}`);
+    console.log("👥 Current users:", users);
   });
 
-  // call offer
+  // offer
   socket.on("offer", ({ to, offer, from }) => {
+    console.log(`📤 Offer from ${from} to ${to}`);
+
     const target = users[to];
     if (target) {
       io.to(target).emit("offer", { offer, from });
+      console.log("✅ Offer sent");
+    } else {
+      console.log("❌ Target not found");
     }
   });
 
-  // call answer
-  socket.on("answer", ({ to, answer }) => {
+  // answer
+  socket.on("answer", ({ to, answer, from }) => {
+    console.log(`📥 Answer from ${from} to ${to}`);
+
     const target = users[to];
     if (target) {
       io.to(target).emit("answer", { answer });
+      console.log("✅ Answer sent");
     }
   });
 
-  // ICE candidates
-  socket.on("ice-candidate", ({ to, candidate }) => {
+  // ICE
+  socket.on("ice-candidate", ({ to, candidate, from }) => {
+    console.log(`🧊 ICE from ${from} to ${to}`);
+
     const target = users[to];
     if (target) {
       io.to(target).emit("ice-candidate", { candidate });
     }
   });
 
-  // disconnect
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    console.log("❌ User disconnected:", socket.id);
 
     for (let id in users) {
       if (users[id] === socket.id) {
+        console.log(`🗑 Removing user: ${id}`);
         delete users[id];
       }
     }
+
+    console.log("👥 Remaining users:", users);
   });
 });
 
-// health check route
 app.get("/", (req, res) => {
   res.send("Socket server running 🚀");
 });
@@ -71,5 +82,5 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  console.log("Server running on port", PORT);
+  console.log("🚀 Server running on port", PORT);
 });
